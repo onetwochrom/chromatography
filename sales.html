@@ -729,8 +729,8 @@
                     // 设置固定相类型筛选
                     currentFilters["固定相类型"] = phase;
                     
-                    // 更新筛选器选项（不限制其他选项）
-                    updateFilterOptions(true);
+                    // 更新筛选器选项（根据固定相类型限制）
+                    updateFilterOptions();
                     
                     // 更新结果
                     updateResults();
@@ -784,8 +784,8 @@
                         delete currentFilters[field];
                     }
                     
-                    // 更新筛选器选项（不限制其他选项）
-                    updateFilterOptions(true);
+                    // 更新筛选器选项（根据固定相类型限制）
+                    updateFilterOptions();
                     
                     // 更新结果
                     updateResults();
@@ -811,11 +811,19 @@
         }
 
         // 更新筛选器选项
-        function updateFilterOptions(preserveOptions = false) {
+        function updateFilterOptions() {
             if (!currentProductType) return;
             
             const config = filterConfigs[currentProductType] || [];
             const data = productData[currentProductType] || [];
+            
+            // 根据当前选择的固定相类型过滤数据
+            let filteredData = data;
+            if (currentFilters["固定相类型"]) {
+                filteredData = data.filter(item => 
+                    item["固定相类型"] === currentFilters["固定相类型"]
+                );
+            }
             
             config.forEach(filter => {
                 // 跳过固定相类型
@@ -827,14 +835,8 @@
                 const currentValue = select.value;
                 const field = filter.field;
                 
-                // 如果当前筛选器被修改，清空相关筛选器
-                if (preserveOptions && currentFilters[field] && currentFilters[field] !== currentValue) {
-                    // 清空当前筛选器的值
-                    delete currentFilters[field];
-                }
-                
-                // 获取该字段在所有数据中的可能值
-                const availableValues = [...new Set(data.map(item => item[field]))].filter(v => v);
+                // 获取该字段在过滤后数据中的可能值
+                const availableValues = [...new Set(filteredData.map(item => item[field]))].filter(v => v);
                 availableValues.sort();
                 
                 // 更新选项
@@ -851,6 +853,12 @@
                     
                     select.appendChild(option);
                 });
+                
+                // 如果当前选中的值在过滤后不可用，清空它
+                if (currentValue && !availableValues.includes(currentValue)) {
+                    delete currentFilters[field];
+                    select.value = "";
+                }
             });
         }
 
@@ -879,6 +887,9 @@
             
             // 应用默认筛选值
             applyDefaultFilters(currentProductType);
+            
+            // 更新筛选器选项（显示所有选项）
+            updateFilterOptions();
             
             // 更新结果
             updateResults();
