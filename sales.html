@@ -219,11 +219,6 @@
             border-color: #3498db;
         }
         
-        /* 默认值样式 - 简化，只保留正常样式 */
-        .filter-select.default-value {
-            /* 移除特殊样式，保持正常黑色 */
-        }
-        
         .results-section {
             background: white;
             border-radius: 10px;
@@ -619,20 +614,6 @@
             ]
         };
 
-        // 默认筛选值
-        const defaultFilters = {
-            "液相分析柱": {
-                "粒径μm": "5",
-                "内径mm": "4.6",
-                "长度mm": "250"
-            },
-            "气相毛细柱": {
-                "长度m": "30",
-                "内径mm": "0.25",
-                "膜厚μm": "0.25"
-            }
-        };
-
         // 需要显示为按钮的字段类型（固定相类型/色谱柱类型）
         const phaseTypeFields = {
             "固定相类型": "固定相类型",
@@ -813,9 +794,6 @@
             // 创建筛选器
             createFilters(productType);
             
-            // 应用默认筛选值
-            applyDefaultFilters(productType);
-            
             // 更新结果
             updateResults();
         }
@@ -855,10 +833,15 @@
                     // 添加当前按钮的active类
                     this.classList.add('active');
                     
-                    // 设置相位类型筛选
-                    currentFilters[currentPhaseTypeField] = phase;
+                    // 清除所有其他筛选条件（除了相位类型）
+                    const newFilters = {};
+                    newFilters[currentPhaseTypeField] = phase;
+                    currentFilters = newFilters;
                     
-                    // 更新筛选器选项（根据相位类型限制）
+                    // 重新创建筛选器，重置所有下拉框
+                    createFilters(currentProductType);
+                    
+                    // 更新筛选器选项（根据新的相位类型）
                     updateFilterOptions();
                     
                     // 更新结果
@@ -909,6 +892,11 @@
                 select.appendChild(option);
             });
             
+            // 如果当前有选中值，设置选中
+            if (currentFilters[filter.field]) {
+                select.value = currentFilters[filter.field];
+            }
+            
             select.addEventListener('change', function() {
                 const field = this.dataset.field;
                 const value = this.value;
@@ -933,19 +921,6 @@
             return select;
         }
 
-        // 应用默认筛选值
-        function applyDefaultFilters(productType) {
-            const defaults = defaultFilters[productType] || {};
-            
-            for (const [field, value] of Object.entries(defaults)) {
-                const select = document.querySelector(`select[data-field="${field}"]`);
-                if (select && select.querySelector(`option[value="${value}"]`)) {
-                    select.value = value;
-                    currentFilters[field] = value;
-                }
-            }
-        }
-
         // 更新筛选器选项
         function updateFilterOptions() {
             if (!currentProductType) return;
@@ -963,15 +938,6 @@
                 );
             }
             
-            // 再根据其他筛选条件进一步过滤（除了当前正在更新的字段）
-            for (const [field, value] of Object.entries(currentFilters)) {
-                if (field !== currentPhaseTypeField) {
-                    filteredData = filteredData.filter(item => 
-                        item[field] === value
-                    );
-                }
-            }
-            
             config.forEach(filter => {
                 // 跳过相位类型字段（我们已经用按钮处理了）
                 if (filter.field === currentPhaseTypeField) return;
@@ -986,6 +952,9 @@
                 const availableValues = [...new Set(filteredData.map(item => item[field]))].filter(v => v);
                 availableValues.sort();
                 
+                // 保存当前选中的值（如果在新数据中还存在）
+                const shouldKeepCurrentValue = currentValue && availableValues.includes(currentValue);
+                
                 // 更新选项
                 select.innerHTML = '<option value="">请选择</option>';
                 availableValues.forEach(value => {
@@ -993,8 +962,8 @@
                     option.value = value;
                     option.textContent = value;
                     
-                    // 如果这个值是当前筛选值，则选中
-                    if (currentFilters[field] === value) {
+                    // 如果这个值应该被选中，则选中
+                    if (shouldKeepCurrentValue && value === currentValue) {
                         option.selected = true;
                     }
                     
@@ -1004,14 +973,6 @@
                 // 如果当前选中的值在过滤后不可用，清空它
                 if (currentValue && !availableValues.includes(currentValue)) {
                     delete currentFilters[field];
-                    select.value = "";
-                    
-                    // 检查是否为默认值字段
-                    const defaults = defaultFilters[currentProductType] || {};
-                    if (defaults[field]) {
-                        select.value = defaults[field];
-                        currentFilters[field] = defaults[field];
-                    }
                 }
             });
         }
@@ -1028,19 +989,8 @@
                 btn.classList.remove('active');
             });
             
-            // 重置所有下拉框为"请选择"
-            const config = filterConfigs[currentProductType] || [];
-            config.forEach(filter => {
-                if (filter.field === currentPhaseTypeField) return;
-                
-                const select = document.getElementById(filter.id);
-                if (select) {
-                    select.value = "";
-                }
-            });
-            
-            // 应用默认筛选值
-            applyDefaultFilters(currentProductType);
+            // 重新创建筛选器（重置所有下拉框）
+            createFilters(currentProductType);
             
             // 更新筛选器选项（显示所有选项）
             updateFilterOptions();
