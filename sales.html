@@ -493,11 +493,8 @@
         <div class="footer">
             <p>© 2023 色谱柱产品查询系统 | 销售查询版</p>
             <p>数据来源：data.json | 最后更新：<span id="updateTime">未知</span></p>
-            <div class="stats-info">
-                <span>液相产品：<span id="statLiquid">0</span>个</span>
-                <span>气相产品：<span id="statGas">0</span>个</span>
-                <span>SPE产品：<span id="statSPE">0</span>个</span>
-                <span>总产品数：<span id="statTotal">0</span>个</span>
+            <div class="stats-info" id="statsInfo">
+                <!-- 统计信息将动态生成 -->
             </div>
         </div>
     </div>
@@ -553,10 +550,6 @@
         const resetFiltersBtn = document.getElementById('resetFilters');
         
         // 统计元素
-        const statLiquid = document.getElementById('statLiquid');
-        const statGas = document.getElementById('statGas');
-        const statSPE = document.getElementById('statSPE');
-        const statTotal = document.getElementById('statTotal');
         const updateTime = document.getElementById('updateTime');
 
         // 当前选择的参数
@@ -618,20 +611,25 @@
         // 更新产品数量统计
         function updateProductStats() {
             let total = 0;
+            let statsHTML = '';
             
             // 遍历所有产品类型
             for (const [type, products] of Object.entries(productData)) {
                 const count = products?.length || 0;
                 total += count;
                 
-                // 更新对应统计元素
-                const statElement = document.getElementById(`stat${type === "SPE" ? "SPE" : type}`);
-                if (statElement) {
-                    statElement.textContent = count;
-                }
+                // 为每个产品类型添加统计信息
+                statsHTML += `<span>${type}产品：<span class="stat-value" data-type="${type}">${count}</span>个</span>`;
             }
             
-            statTotal.textContent = total;
+            // 添加总计
+            statsHTML += `<span>总产品数：<span id="statTotal">${total}</span>个</span>`;
+            
+            // 更新统计信息显示
+            const statsInfo = document.getElementById('statsInfo');
+            if (statsInfo) {
+                statsInfo.innerHTML = statsHTML;
+            }
         }
 
         // 创建产品类型按钮
