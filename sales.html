@@ -79,7 +79,7 @@
             color: #2c3e50;
             cursor: pointer;
             transition: all 0.3s;
-            min-width: 120px;
+            min-width: 140px;
         }
         
         .type-btn:hover {
@@ -366,16 +366,66 @@
             align-items: center;
             gap: 5px;
             transition: all 0.2s;
+            position: relative;
         }
         
         .copy-btn:hover {
             background: #2980b9;
         }
         
+        .copy-btn.copied {
+            background: #2ecc71;
+        }
+        
         .product-actions {
             display: flex;
             justify-content: flex-end;
             margin-top: 10px;
+        }
+        
+        /* 隐藏的文本区域用于复制 */
+        .copy-textarea {
+            position: absolute;
+            left: -9999px;
+            opacity: 0;
+        }
+        
+        /* 复制成功提示 */
+        .copy-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+            display: none;
+        }
+        
+        @keyframes slideUp {
+            from {
+                bottom: -50px;
+                opacity: 0;
+            }
+            to {
+                bottom: 20px;
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideDown {
+            from {
+                bottom: 20px;
+                opacity: 1;
+            }
+            to {
+                bottom: -50px;
+                opacity: 0;
+            }
         }
         
         @media (max-width: 768px) {
@@ -415,10 +465,22 @@
                 flex-direction: column;
                 gap: 5px;
             }
+            
+            .copy-toast {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                transform: none;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- 复制成功提示 -->
+    <div class="copy-toast" id="copyToast">
+        <i class="fas fa-check-circle"></i> 产品信息已复制到剪贴板
+    </div>
+    
     <div class="container">
         <div class="header">
             <h1><i class="fas fa-vial"></i> 色谱柱产品查询系统</h1>
@@ -499,20 +561,24 @@
         </div>
     </div>
 
+    <!-- 隐藏的文本区域用于复制 -->
+    <textarea id="copyTextarea" class="copy-textarea"></textarea>
+
     <script>
         // 产品数据存储
         let productData = {};
         
-        // 筛选器配置
+        // 筛选器配置 - 更新为六大分类
         const filterConfigs = {
-            "液相": [
+            "液相分析柱": [
                 { id: "fixedPhase", label: "固定相类型", field: "固定相类型" },
                 { id: "model", label: "型号", field: "型号" },
                 { id: "particleSize", label: "粒径(μm)", field: "粒径μm" },
                 { id: "innerDiameter", label: "内径(mm)", field: "内径mm" },
                 { id: "length", label: "长度(mm)", field: "长度mm" }
             ],
-            "气相": [
+            "气相毛细柱": [
+                { id: "application", label: "应用场景", field: "应用场景" },
                 { id: "model", label: "型号", field: "型号" },
                 { id: "length", label: "长度(m)", field: "长度m" },
                 { id: "innerDiameter", label: "内径(mm)", field: "内径mm" },
@@ -524,14 +590,45 @@
                 { id: "weight", label: "克重(mg)", field: "克重mg" },
                 { id: "volume", label: "体积(mL)", field: "体积mL" },
                 { id: "quantity", label: "数量", field: "数量" }
+            ],
+            "UHPLC柱": [
+                { id: "fixedPhase", label: "固定相类型", field: "固定相类型" },
+                { id: "model", label: "型号", field: "型号" },
+                { id: "particleSize", label: "粒径(μm)", field: "粒径μm" },
+                { id: "innerDiameter", label: "内径(mm)", field: "内径mm" },
+                { id: "length", label: "长度(mm)", field: "长度mm" }
+            ],
+            "液相制备柱": [
+                { id: "fixedPhase", label: "固定相类型", field: "固定相类型" },
+                { id: "model", label: "型号", field: "型号" },
+                { id: "particleSize", label: "粒径(μm)", field: "粒径μm" },
+                { id: "innerDiameter", label: "内径(mm)", field: "内径mm" },
+                { id: "length", label: "长度(mm)", field: "长度mm" }
+            ],
+            "色谱填料": [
+                { id: "fixedPhase", label: "固定相类型", field: "固定相类型" },
+                { id: "model", label: "型号", field: "型号" },
+                { id: "poreSize", label: "孔径", field: "孔径" },
+                { id: "particleSize", label: "粒径", field: "粒径" },
+                { id: "quantity", label: "数量", field: "数量" }
             ]
         };
 
         // 默认筛选值
         const defaultFilters = {
-            "液相": {
+            "液相分析柱": {
                 "粒径μm": "5",
                 "内径mm": "4.6",
+                "长度mm": "250"
+            },
+            "UHPLC柱": {
+                "粒径μm": "1.7",
+                "内径mm": "2.1",
+                "长度mm": "100"
+            },
+            "液相制备柱": {
+                "粒径μm": "10",
+                "内径mm": "20",
                 "长度mm": "250"
             }
         };
@@ -548,6 +645,8 @@
         const resultsSection = document.getElementById('resultsSection');
         const resultsContainer = document.getElementById('resultsContainer');
         const resetFiltersBtn = document.getElementById('resetFilters');
+        const copyTextarea = document.getElementById('copyTextarea');
+        const copyToast = document.getElementById('copyToast');
         
         // 统计元素
         const updateTime = document.getElementById('updateTime');
@@ -619,7 +718,7 @@
                 total += count;
                 
                 // 为每个产品类型添加统计信息
-                statsHTML += `<span>${type}产品：<span class="stat-value" data-type="${type}">${count}</span>个</span>`;
+                statsHTML += `<span>${type}：<span class="stat-value" data-type="${type}">${count}</span>个</span>`;
             }
             
             // 添加总计
@@ -676,10 +775,19 @@
             // 显示筛选和结果区域
             filterSection.style.display = 'block';
             resultsSection.style.display = 'block';
-            fixedPhaseButtons.style.display = 'block';
             
-            // 获取该产品类型的固定相类型
-            getFixedPhases(productType);
+            // 检查该产品类型是否有固定相类型字段
+            const config = filterConfigs[productType] || [];
+            const hasFixedPhase = config.some(filter => filter.field === "固定相类型");
+            
+            if (hasFixedPhase) {
+                fixedPhaseButtons.style.display = 'block';
+                // 获取该产品类型的固定相类型
+                getFixedPhases(productType);
+            } else {
+                fixedPhaseButtons.style.display = 'none';
+                availableFixedPhases = [];
+            }
             
             // 创建筛选器
             createFilters(productType);
@@ -746,55 +854,67 @@
             const config = filterConfigs[productType] || [];
             
             config.forEach(filter => {
-                // 跳过固定相类型，因为我们已经用按钮处理了
-                if (filter.field === "固定相类型") return;
-                
-                const filterGroup = document.createElement('div');
-                filterGroup.className = 'filter-group';
-                
-                const label = document.createElement('label');
-                label.textContent = filter.label;
-                label.htmlFor = filter.id;
-                
-                const select = document.createElement('select');
-                select.id = filter.id;
-                select.className = 'filter-select';
-                select.dataset.field = filter.field;
-                select.innerHTML = '<option value="">请选择</option>';
-                
-                // 获取该字段的所有可能值
-                const data = productData[productType] || [];
-                const values = [...new Set(data.map(item => item[filter.field]))].filter(v => v);
-                values.sort();
-                
-                values.forEach(value => {
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = value;
-                    select.appendChild(option);
-                });
-                
-                select.addEventListener('change', function() {
-                    const field = this.dataset.field;
-                    const value = this.value;
-                    
-                    if (value) {
-                        currentFilters[field] = value;
-                    } else {
-                        delete currentFilters[field];
+                // 跳过固定相类型，因为我们已经用按钮处理了（如果有的话）
+                if (filter.field === "固定相类型") {
+                    // 对于气相毛细柱，应用场景不是固定相类型，需要特殊处理
+                    if (filter.id === "application") {
+                        // 对于应用场景，我们创建普通的下拉框
+                        createFilterSelect(filter);
                     }
-                    
-                    // 更新筛选器选项（根据固定相类型限制）
-                    updateFilterOptions();
-                    
-                    // 更新结果
-                    updateResults();
-                });
+                    return;
+                }
                 
-                filterGroup.appendChild(label);
-                filterGroup.appendChild(select);
-                filterGrid.appendChild(filterGroup);
+                createFilterSelect(filter);
             });
+        }
+
+        // 创建筛选器下拉框
+        function createFilterSelect(filter) {
+            const filterGroup = document.createElement('div');
+            filterGroup.className = 'filter-group';
+            
+            const label = document.createElement('label');
+            label.textContent = filter.label;
+            label.htmlFor = filter.id;
+            
+            const select = document.createElement('select');
+            select.id = filter.id;
+            select.className = 'filter-select';
+            select.dataset.field = filter.field;
+            select.innerHTML = '<option value="">请选择</option>';
+            
+            // 获取该字段的所有可能值
+            const data = productData[currentProductType] || [];
+            const values = [...new Set(data.map(item => item[filter.field]))].filter(v => v);
+            values.sort();
+            
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', function() {
+                const field = this.dataset.field;
+                const value = this.value;
+                
+                if (value) {
+                    currentFilters[field] = value;
+                } else {
+                    delete currentFilters[field];
+                }
+                
+                // 更新筛选器选项（根据固定相类型限制）
+                updateFilterOptions();
+                
+                // 更新结果
+                updateResults();
+            });
+            
+            filterGroup.appendChild(label);
+            filterGroup.appendChild(select);
+            filterGrid.appendChild(filterGroup);
         }
 
         // 应用默认筛选值
@@ -817,17 +937,28 @@
             const config = filterConfigs[currentProductType] || [];
             const data = productData[currentProductType] || [];
             
-            // 根据当前选择的固定相类型过滤数据
+            // 根据当前选择的筛选条件过滤数据
             let filteredData = data;
+            
+            // 如果有固定相类型筛选，先根据固定相类型过滤
             if (currentFilters["固定相类型"]) {
-                filteredData = data.filter(item => 
+                filteredData = filteredData.filter(item => 
                     item["固定相类型"] === currentFilters["固定相类型"]
                 );
             }
             
+            // 再根据其他筛选条件进一步过滤
+            for (const [field, value] of Object.entries(currentFilters)) {
+                if (field !== "固定相类型") {
+                    filteredData = filteredData.filter(item => 
+                        item[field] === value
+                    );
+                }
+            }
+            
             config.forEach(filter => {
-                // 跳过固定相类型
-                if (filter.field === "固定相类型") return;
+                // 跳过固定相类型（我们已经用按钮处理了）
+                if (filter.field === "固定相类型" && filter.id !== "application") return;
                 
                 const select = document.getElementById(filter.id);
                 if (!select) return;
@@ -877,7 +1008,7 @@
             // 重置所有下拉框为"请选择"
             const config = filterConfigs[currentProductType] || [];
             config.forEach(filter => {
-                if (filter.field === "固定相类型") return;
+                if (filter.field === "固定相类型" && filter.id !== "application") return;
                 
                 const select = document.getElementById(filter.id);
                 if (select) {
@@ -976,39 +1107,102 @@
             
             // 添加复制功能
             const copyBtn = card.querySelector('.copy-btn');
-            copyBtn.addEventListener('click', function() {
+            copyBtn.addEventListener('click', function(e) {
                 const productData = JSON.parse(this.dataset.product.replace(/&#39;/g, "'"));
-                copyProductInfo(productData);
+                copyProductInfo(productData, this);
             });
             
             return card;
         }
 
         // 复制产品信息
-        function copyProductInfo(product) {
+        function copyProductInfo(product, button) {
             const marketPrice = product['市场价'] || '价格待定';
             const productCode = product['货号'] || '无货号';
             const description = product['描述'] || '无描述信息';
             
             const textToCopy = `货号：${productCode}\n价格：¥${marketPrice}\n描述：${description}`;
             
-            // 使用Clipboard API复制文本
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                // 显示复制成功提示
-                const originalText = event.target.innerHTML;
-                event.target.innerHTML = '<i class="fas fa-check"></i> 已复制';
-                event.target.style.background = '#2ecc71';
+            // 使用更兼容的复制方法
+            copyTextarea.value = textToCopy;
+            copyTextarea.select();
+            copyTextarea.setSelectionRange(0, 99999); // 移动端兼容
+            
+            try {
+                // 尝试使用execCommand作为备选方案
+                const successful = document.execCommand('copy');
                 
-                // 2秒后恢复原状
-                setTimeout(() => {
-                    event.target.innerHTML = originalText;
-                    event.target.style.background = '';
-                }, 2000);
-            }).catch(err => {
+                if (successful) {
+                    // 显示成功反馈
+                    showCopySuccess(button);
+                } else {
+                    // 如果execCommand失败，尝试navigator.clipboard
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        showCopySuccess(button);
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                        // 提供备选方案
+                        fallbackCopy(textToCopy, button);
+                    });
+                }
+            } catch (err) {
                 console.error('复制失败:', err);
-                alert('复制失败，请手动复制信息');
-            });
+                // 尝试navigator.clipboard
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        showCopySuccess(button);
+                    }).catch(() => {
+                        fallbackCopy(textToCopy, button);
+                    });
+                } else {
+                    fallbackCopy(textToCopy, button);
+                }
+            }
         }
+
+        // 显示复制成功反馈
+        function showCopySuccess(button) {
+            // 保存原始按钮文本
+            const originalHTML = button.innerHTML;
+            
+            // 更新按钮状态
+            button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+            button.classList.add('copied');
+            
+            // 显示全局提示
+            copyToast.style.display = 'block';
+            copyToast.style.animation = 'slideUp 0.3s ease';
+            
+            // 2秒后恢复按钮状态
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+                button.classList.remove('copiled');
+            }, 2000);
+            
+            // 3秒后隐藏提示
+            setTimeout(() => {
+                copyToast.style.animation = 'slideDown 0.3s ease';
+                setTimeout(() => {
+                    copyToast.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        // 备选复制方案
+        function fallbackCopy(text, button) {
+            // 尝试使用prompt让用户手动复制
+            const copyConfirmed = confirm('复制功能需要授权，请点击确定后按Ctrl+C复制以下信息：\n\n' + text);
+            
+            if (copyConfirmed) {
+                // 选中文本区域中的文本
+                copyTextarea.value = text;
+                copyTextarea.select();
+                
+                // 显示成功反馈
+                showCopySuccess(button);
+            }
+        }
+
     </script>
 </body>
 </html>
