@@ -213,39 +213,15 @@
             background: white;
             cursor: pointer;
             transition: border-color 0.3s;
-            position: relative;
         }
         
         .filter-select:hover {
             border-color: #3498db;
         }
         
-        /* 默认值样式 */
+        /* 默认值样式 - 简化，只保留正常样式 */
         .filter-select.default-value {
-            border-color: #95a5a6;
-            color: #7f8c8d;
-            font-style: italic;
-        }
-        
-        .filter-select.default-value option:not(:first-child) {
-            color: #2c3e50;
-        }
-        
-        .filter-select.default-value option:first-child {
-            color: #7f8c8d;
-            font-style: italic;
-        }
-        
-        .default-badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #95a5a6;
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-weight: normal;
+            /* 移除特殊样式，保持正常黑色 */
         }
         
         .results-section {
@@ -500,13 +476,6 @@
                 left: 10px;
                 right: 10px;
                 transform: none;
-            }
-            
-            .default-badge {
-                top: -6px;
-                right: -6px;
-                font-size: 9px;
-                padding: 1px 4px;
             }
         }
     </style>
@@ -878,27 +847,16 @@
                 button.dataset.phase = phase;
                 
                 button.addEventListener('click', function() {
-                    // 获取当前选中的相位类型
-                    const currentPhase = currentFilters[currentPhaseTypeField];
+                    // 移除其他按钮的active类
+                    document.querySelectorAll('.phase-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
                     
-                    // 如果是当前已选中的相位类型，则取消选择
-                    if (currentPhase === phase) {
-                        // 移除当前按钮的active类
-                        this.classList.remove('active');
-                        // 清除筛选
-                        delete currentFilters[currentPhaseTypeField];
-                    } else {
-                        // 移除其他按钮的active类
-                        document.querySelectorAll('.phase-btn').forEach(btn => {
-                            btn.classList.remove('active');
-                        });
-                        
-                        // 添加当前按钮的active类
-                        this.classList.add('active');
-                        
-                        // 设置相位类型筛选
-                        currentFilters[currentPhaseTypeField] = phase;
-                    }
+                    // 添加当前按钮的active类
+                    this.classList.add('active');
+                    
+                    // 设置相位类型筛选
+                    currentFilters[currentPhaseTypeField] = phase;
                     
                     // 更新筛选器选项（根据相位类型限制）
                     updateFilterOptions();
@@ -933,9 +891,6 @@
             label.textContent = filter.label;
             label.htmlFor = filter.id;
             
-            const selectContainer = document.createElement('div');
-            selectContainer.style.position = 'relative';
-            
             const select = document.createElement('select');
             select.id = filter.id;
             select.className = 'filter-select';
@@ -960,15 +915,8 @@
                 
                 if (value) {
                     currentFilters[field] = value;
-                    // 移除默认值样式
-                    this.classList.remove('default-value');
                 } else {
                     delete currentFilters[field];
-                    // 检查是否为默认值字段
-                    const defaults = defaultFilters[currentProductType] || {};
-                    if (defaults[field]) {
-                        this.classList.add('default-value');
-                    }
                 }
                 
                 // 更新筛选器选项
@@ -978,9 +926,8 @@
                 updateResults();
             });
             
-            selectContainer.appendChild(select);
             filterGroup.appendChild(label);
-            filterGroup.appendChild(selectContainer);
+            filterGroup.appendChild(select);
             filterGrid.appendChild(filterGroup);
             
             return select;
@@ -995,8 +942,6 @@
                 if (select && select.querySelector(`option[value="${value}"]`)) {
                     select.value = value;
                     currentFilters[field] = value;
-                    // 添加默认值样式
-                    select.classList.add('default-value');
                 }
             }
         }
@@ -1064,7 +1009,6 @@
                     // 检查是否为默认值字段
                     const defaults = defaultFilters[currentProductType] || {};
                     if (defaults[field]) {
-                        select.classList.add('default-value');
                         select.value = defaults[field];
                         currentFilters[field] = defaults[field];
                     }
@@ -1092,7 +1036,6 @@
                 const select = document.getElementById(filter.id);
                 if (select) {
                     select.value = "";
-                    select.classList.remove('default-value');
                 }
             });
             
