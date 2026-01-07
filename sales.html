@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>色谱柱产品查询系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #2c3e50 0%, #4a6491 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .product-type-buttons {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .product-type-buttons label {
+            font-size: 18px;
+            font-weight: bold;
+            margin-right: 15px;
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 15px;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .type-btn {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            background: white;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+        
+        .type-btn:hover {
+            background: #f0f8ff;
+            transform: translateY(-2px);
+        }
+        
+        .type-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        
+        .fixed-phase-buttons {
+            margin-bottom: 30px;
+            text-align: center;
+            display: none;
+        }
+        
+        .fixed-phase-buttons label {
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 10px;
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .phase-btn {
+            padding: 8px 15px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #f8f9fa;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .phase-btn:hover {
+            background: #e9ecef;
+            border-color: #3498db;
+        }
+        
+        .phase-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        
+        .filter-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+            display: none;
+        }
+        
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .filter-title {
+            font-size: 20px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .reset-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .reset-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #495057;
+            font-size: 14px;
+        }
+        
+        .filter-select {
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .filter-select:hover {
+            border-color: #3498db;
+        }
+        
+        .results-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            display: none;
+        }
+        
+        .results-title {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .results-container {
+            min-height: 100px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .product-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .product-price {
+            color: #e74c3c;
+            font-size: 22px;
+            font-weight: bold;
+        }
+        
+        .product-details {
+            margin-bottom: 15px;
+        }
+        
+        .detail-row {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #495057;
+            min-width: 80px;
+        }
+        
+        .product-description {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            font-style: italic;
+            color: #6c757d;
+            border-left: 4px solid #3498db;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .product-code {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #3498db;
+        }
+        
+        .error-message {
+            text-align: center;
+            padding: 40px;
+            color: #e74c3c;
+            background: #fdf2f2;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px 20px;
+            color: #6c757d;
+            font-size: 14px;
+            border-top: 1px solid #e9ecef;
+            margin-top: 30px;
+            line-height: 1.6;
+        }
+        
+        .stats-info {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .copy-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background: #2980b9;
+        }
+        
+        .product-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .type-btn {
+                width: 100%;
+                max-width: 250px;
+            }
+            
+            .stats-info {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-vial"></i> 色谱柱产品查询系统</h1>
+            <p>销售专用 - 快速查找产品信息</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- 加载状态 -->
+            <div class="loading" id="loading">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p style="margin-top: 15px; font-size: 16px;">正在加载产品数据...</p>
+            </div>
+            
+            <!-- 错误信息 -->
+            <div class="error-message" id="errorMessage" style="display: none;">
+                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                <h3 style="margin: 15px 0;">无法加载数据</h3>
+                <p>请确保data.json文件已正确上传到服务器</p>
+                <p style="margin-top: 10px; font-size: 14px; color: #999;">
+                    请联系市场部获取最新的产品数据文件
+                </p>
+            </div>
+            
+            <!-- 产品类型按钮 -->
+            <div class="product-type-buttons" id="productTypeButtons" style="display: none;">
+                <label><i class="fas fa-filter"></i> 选择产品类型：</label>
+                <div class="button-group" id="typeButtonGroup">
+                    <!-- 按钮将由JavaScript动态生成 -->
+                </div>
+            </div>
+            
+            <!-- 固定相类型按钮 -->
+            <div class="fixed-phase-buttons" id="fixedPhaseButtons">
+                <label><i class="fas fa-layer-group"></i> 选择固定相类型：</label>
+                <div class="button-group" id="phaseButtonGroup">
+                    <!-- 按钮将由JavaScript动态生成 -->
+                </div>
+            </div>
+            
+            <!-- 筛选区域 -->
+            <div class="filter-section" id="filterSection">
+                <div class="filter-header">
+                    <div class="filter-title">
+                        <i class="fas fa-sliders-h"></i> 产品参数筛选
+                    </div>
+                    <button class="reset-btn" id="resetFilters">
+                        <i class="fas fa-redo"></i> 重置筛选条件
+                    </button>
+                </div>
+                <div class="filter-grid" id="filterGrid">
+                    <div class="no-filters">
+                        请先选择产品类型
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 结果区域 -->
+            <div class="results-section" id="resultsSection">
+                <div class="results-title">
+                    <i class="fas fa-search"></i> 查询结果
+                </div>
+                <div class="results-container" id="resultsContainer">
+                    <div class="no-results">
+                        <i class="fas fa-info-circle" style="font-size: 48px; margin-bottom: 15px;"></i>
+                        <p>请选择产品类型并设置筛选条件以查看结果</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <div class="footer">
+            <p>© 2023 色谱柱产品查询系统 | 销售查询版</p>
+            <p>数据来源：data.json | 最后更新：<span id="updateTime">未知</span></p>
+            <div class="stats-info">
+                <span>液相产品：<span id="statLiquid">0</span>个</span>
+                <span>气相产品：<span id="statGas">0</span>个</span>
+                <span>SPE产品：<span id="statSPE">0</span>个</span>
+                <span>总产品数：<span id="statTotal">0</span>个</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 产品数据存储
+        let productData = {};
+        
+        // 筛选器配置
+        const filterConfigs = {
+            "液相": [
+                { id: "fixedPhase", label: "固定相类型", field: "固定相类型" },
+                { id: "model", label: "型号", field: "型号" },
+                { id: "particleSize", label: "粒径(μm)", field: "粒径μm" },
+                { id: "innerDiameter", label: "内径(mm)", field: "内径mm" },
+                { id: "length", label: "长度(mm)", field: "长度mm" }
+            ],
+            "气相": [
+                { id: "model", label: "型号", field: "型号" },
+                { id: "length", label: "长度(m)", field: "长度m" },
+                { id: "innerDiameter", label: "内径(mm)", field: "内径mm" },
+                { id: "filmThickness", label: "膜厚(μm)", field: "膜厚μm" }
+            ],
+            "SPE": [
+                { id: "fixedPhase", label: "固定相类型", field: "固定相类型" },
+                { id: "model", label: "型号", field: "型号" },
+                { id: "weight", label: "克重(mg)", field: "克重mg" },
+                { id: "volume", label: "体积(mL)", field: "体积mL" },
+                { id: "quantity", label: "数量", field: "数量" }
+            ]
+        };
+
+        // 默认筛选值
+        const defaultFilters = {
+            "液相": {
+                "粒径μm": "5",
+                "内径mm": "4.6",
+                "长度mm": "250"
+            }
+        };
+
+        // DOM元素
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const productTypeButtons = document.getElementById('productTypeButtons');
+        const typeButtonGroup = document.getElementById('typeButtonGroup');
+        const fixedPhaseButtons = document.getElementById('fixedPhaseButtons');
+        const phaseButtonGroup = document.getElementById('phaseButtonGroup');
+        const filterSection = document.getElementById('filterSection');
+        const filterGrid = document.getElementById('filterGrid');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resetFiltersBtn = document.getElementById('resetFilters');
+        
+        // 统计元素
+        const statLiquid = document.getElementById('statLiquid');
+        const statGas = document.getElementById('statGas');
+        const statSPE = document.getElementById('statSPE');
+        const statTotal = document.getElementById('statTotal');
+        const updateTime = document.getElementById('updateTime');
+
+        // 当前选择的参数
+        let currentFilters = {};
+        let currentProductType = '';
+        let availableFixedPhases = [];
+
+        // 页面加载时自动加载数据
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载数据文件
+            loadDataFile();
+            
+            // 重置按钮监听
+            resetFiltersBtn.addEventListener('click', resetAllFilters);
+        });
+
+        // 加载数据文件
+        async function loadDataFile() {
+            try {
+                // 从data.json加载数据
+                const response = await fetch('data.json');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const jsonData = await response.json();
+                
+                // 提取产品数据
+                productData = jsonData.data || {};
+                
+                // 显示更新时间
+                const timestamp = jsonData.timestamp ? new Date(jsonData.timestamp) : new Date();
+                const timeString = timestamp.toLocaleString('zh-CN');
+                updateTime.textContent = timeString;
+                
+                // 创建产品类型按钮
+                createProductTypeButtons();
+                
+                // 更新产品数量统计
+                updateProductStats();
+                
+                // 隐藏加载状态，显示查询界面
+                loading.style.display = 'none';
+                productTypeButtons.style.display = 'block';
+                
+            } catch (error) {
+                console.error('加载数据文件失败:', error);
+                
+                // 显示错误信息
+                loading.style.display = 'none';
+                errorMessage.style.display = 'block';
+                
+                // 更新页脚信息
+                updateTime.textContent = '数据加载失败';
+            }
+        }
+
+        // 更新产品数量统计
+        function updateProductStats() {
+            let total = 0;
+            
+            // 遍历所有产品类型
+            for (const [type, products] of Object.entries(productData)) {
+                const count = products?.length || 0;
+                total += count;
+                
+                // 更新对应统计元素
+                const statElement = document.getElementById(`stat${type === "SPE" ? "SPE" : type}`);
+                if (statElement) {
+                    statElement.textContent = count;
+                }
+            }
+            
+            statTotal.textContent = total;
+        }
+
+        // 创建产品类型按钮
+        function createProductTypeButtons() {
+            typeButtonGroup.innerHTML = '';
+            
+            // 获取所有产品类型
+            const productTypes = Object.keys(productData);
+            
+            if (productTypes.length === 0) {
+                typeButtonGroup.innerHTML = '<p>没有可用的产品数据</p>';
+                return;
+            }
+            
+            // 为每个产品类型创建按钮
+            productTypes.forEach(type => {
+                const button = document.createElement('button');
+                button.className = 'type-btn';
+                button.textContent = type;
+                button.dataset.type = type;
+                
+                button.addEventListener('click', function() {
+                    // 移除其他按钮的active类
+                    document.querySelectorAll('.type-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // 添加当前按钮的active类
+                    this.classList.add('active');
+                    
+                    // 处理产品类型选择
+                    handleProductTypeSelect(type);
+                });
+                
+                typeButtonGroup.appendChild(button);
+            });
+        }
+
+        // 处理产品类型选择
+        function handleProductTypeSelect(productType) {
+            currentProductType = productType;
+            currentFilters = {};
+            
+            // 显示筛选和结果区域
+            filterSection.style.display = 'block';
+            resultsSection.style.display = 'block';
+            fixedPhaseButtons.style.display = 'block';
+            
+            // 获取该产品类型的固定相类型
+            getFixedPhases(productType);
+            
+            // 创建筛选器
+            createFilters(productType);
+            
+            // 应用默认筛选值
+            applyDefaultFilters(productType);
+            
+            // 更新结果
+            updateResults();
+        }
+
+        // 获取固定相类型
+        function getFixedPhases(productType) {
+            const data = productData[productType] || [];
+            availableFixedPhases = [...new Set(data.map(item => item["固定相类型"]))].filter(v => v);
+            availableFixedPhases.sort();
+            
+            // 创建固定相类型按钮
+            createFixedPhaseButtons();
+        }
+
+        // 创建固定相类型按钮
+        function createFixedPhaseButtons() {
+            phaseButtonGroup.innerHTML = '';
+            
+            if (availableFixedPhases.length === 0) {
+                phaseButtonGroup.innerHTML = '<p>该产品类型暂无固定相类型数据</p>';
+                return;
+            }
+            
+            // 为每个固定相类型创建按钮
+            availableFixedPhases.forEach(phase => {
+                const button = document.createElement('button');
+                button.className = 'phase-btn';
+                button.textContent = phase;
+                button.dataset.phase = phase;
+                
+                button.addEventListener('click', function() {
+                    // 移除其他按钮的active类
+                    document.querySelectorAll('.phase-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // 添加当前按钮的active类
+                    this.classList.add('active');
+                    
+                    // 设置固定相类型筛选
+                    currentFilters["固定相类型"] = phase;
+                    
+                    // 更新筛选器选项（不限制其他选项）
+                    updateFilterOptions(true);
+                    
+                    // 更新结果
+                    updateResults();
+                });
+                
+                phaseButtonGroup.appendChild(button);
+            });
+        }
+
+        // 创建筛选器
+        function createFilters(productType) {
+            filterGrid.innerHTML = '';
+            const config = filterConfigs[productType] || [];
+            
+            config.forEach(filter => {
+                // 跳过固定相类型，因为我们已经用按钮处理了
+                if (filter.field === "固定相类型") return;
+                
+                const filterGroup = document.createElement('div');
+                filterGroup.className = 'filter-group';
+                
+                const label = document.createElement('label');
+                label.textContent = filter.label;
+                label.htmlFor = filter.id;
+                
+                const select = document.createElement('select');
+                select.id = filter.id;
+                select.className = 'filter-select';
+                select.dataset.field = filter.field;
+                select.innerHTML = '<option value="">请选择</option>';
+                
+                // 获取该字段的所有可能值
+                const data = productData[productType] || [];
+                const values = [...new Set(data.map(item => item[filter.field]))].filter(v => v);
+                values.sort();
+                
+                values.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    select.appendChild(option);
+                });
+                
+                select.addEventListener('change', function() {
+                    const field = this.dataset.field;
+                    const value = this.value;
+                    
+                    if (value) {
+                        currentFilters[field] = value;
+                    } else {
+                        delete currentFilters[field];
+                    }
+                    
+                    // 更新筛选器选项（不限制其他选项）
+                    updateFilterOptions(true);
+                    
+                    // 更新结果
+                    updateResults();
+                });
+                
+                filterGroup.appendChild(label);
+                filterGroup.appendChild(select);
+                filterGrid.appendChild(filterGroup);
+            });
+        }
+
+        // 应用默认筛选值
+        function applyDefaultFilters(productType) {
+            const defaults = defaultFilters[productType] || {};
+            
+            for (const [field, value] of Object.entries(defaults)) {
+                const select = document.querySelector(`select[data-field="${field}"]`);
+                if (select && select.querySelector(`option[value="${value}"]`)) {
+                    select.value = value;
+                    currentFilters[field] = value;
+                }
+            }
+        }
+
+        // 更新筛选器选项
+        function updateFilterOptions(preserveOptions = false) {
+            if (!currentProductType) return;
+            
+            const config = filterConfigs[currentProductType] || [];
+            const data = productData[currentProductType] || [];
+            
+            config.forEach(filter => {
+                // 跳过固定相类型
+                if (filter.field === "固定相类型") return;
+                
+                const select = document.getElementById(filter.id);
+                if (!select) return;
+                
+                const currentValue = select.value;
+                const field = filter.field;
+                
+                // 如果当前筛选器被修改，清空相关筛选器
+                if (preserveOptions && currentFilters[field] && currentFilters[field] !== currentValue) {
+                    // 清空当前筛选器的值
+                    delete currentFilters[field];
+                }
+                
+                // 获取该字段在所有数据中的可能值
+                const availableValues = [...new Set(data.map(item => item[field]))].filter(v => v);
+                availableValues.sort();
+                
+                // 更新选项
+                select.innerHTML = '<option value="">请选择</option>';
+                availableValues.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    
+                    // 如果这个值是当前筛选值，则选中
+                    if (currentFilters[field] === value) {
+                        option.selected = true;
+                    }
+                    
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        // 重置所有筛选条件
+        function resetAllFilters() {
+            if (!currentProductType) return;
+            
+            // 清空当前筛选条件
+            currentFilters = {};
+            
+            // 重置所有按钮
+            document.querySelectorAll('.phase-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 重置所有下拉框为"请选择"
+            const config = filterConfigs[currentProductType] || [];
+            config.forEach(filter => {
+                if (filter.field === "固定相类型") return;
+                
+                const select = document.getElementById(filter.id);
+                if (select) {
+                    select.value = "";
+                }
+            });
+            
+            // 应用默认筛选值
+            applyDefaultFilters(currentProductType);
+            
+            // 更新结果
+            updateResults();
+        }
+
+        // 更新结果
+        function updateResults() {
+            if (!currentProductType) {
+                showNoResultsMessage('请选择产品类型');
+                return;
+            }
+            
+            const data = productData[currentProductType] || [];
+            
+            // 应用筛选
+            let filteredData = data.filter(item => {
+                for (const [field, value] of Object.entries(currentFilters)) {
+                    if (value && item[field] !== value) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+            
+            // 清空结果容器
+            resultsContainer.innerHTML = '';
+            
+            if (filteredData.length === 0) {
+                showNoResultsMessage('没有找到匹配的产品，请尝试调整筛选条件');
+                return;
+            }
+            
+            // 显示结果
+            const resultsGrid = document.createElement('div');
+            resultsGrid.className = 'results-grid';
+            
+            filteredData.forEach(product => {
+                const card = createProductCard(product);
+                resultsGrid.appendChild(card);
+            });
+            
+            resultsContainer.appendChild(resultsGrid);
+        }
+
+        // 显示无结果消息
+        function showNoResultsMessage(message) {
+            resultsContainer.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-search" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <p>${message}</p>
+                    <p style="margin-top: 10px; font-size: 14px; color: #999;">
+                        请尝试调整筛选条件或点击"重置"按钮重新筛选
+                    </p>
+                </div>`;
+        }
+
+        // 创建产品卡片
+        function createProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            const marketPrice = product['市场价'] || '价格待定';
+            const productCode = product['货号'] || '无货号';
+            const description = product['描述'] || '无描述信息';
+            
+            card.innerHTML = `
+                <div class="product-header">
+                    <span class="product-price">¥${marketPrice}</span>
+                </div>
+                <div class="product-details">
+                    <div class="detail-row">
+                        <span class="detail-label">货号：</span>
+                        <span class="product-code">${productCode}</span>
+                    </div>
+                </div>
+                <div class="product-description">
+                    ${description}
+                </div>
+                <div class="product-actions">
+                    <button class="copy-btn" data-product='${JSON.stringify(product).replace(/'/g, "&#39;")}'>
+                        <i class="far fa-copy"></i> 复制信息
+                    </button>
+                </div>`;
+            
+            // 添加复制功能
+            const copyBtn = card.querySelector('.copy-btn');
+            copyBtn.addEventListener('click', function() {
+                const productData = JSON.parse(this.dataset.product.replace(/&#39;/g, "'"));
+                copyProductInfo(productData);
+            });
+            
+            return card;
+        }
+
+        // 复制产品信息
+        function copyProductInfo(product) {
+            const marketPrice = product['市场价'] || '价格待定';
+            const productCode = product['货号'] || '无货号';
+            const description = product['描述'] || '无描述信息';
+            
+            const textToCopy = `货号：${productCode}\n价格：¥${marketPrice}\n描述：${description}`;
+            
+            // 使用Clipboard API复制文本
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                // 显示复制成功提示
+                const originalText = event.target.innerHTML;
+                event.target.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                event.target.style.background = '#2ecc71';
+                
+                // 2秒后恢复原状
+                setTimeout(() => {
+                    event.target.innerHTML = originalText;
+                    event.target.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制信息');
+            });
+        }
+    </script>
+</body>
+</html>
