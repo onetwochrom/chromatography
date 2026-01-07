@@ -219,6 +219,11 @@
             border-color: #3498db;
         }
         
+        .filter-select option:disabled {
+            color: #999;
+            background-color: #f5f5f5;
+        }
+        
         .results-section {
             background: white;
             border-radius: 10px;
@@ -901,6 +906,13 @@
                 const field = this.dataset.field;
                 const value = this.value;
                 
+                // 只有当用户选择了有效值（不是禁用选项）时才更新筛选条件
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.disabled) {
+                    // 如果是禁用选项，不更新筛选条件
+                    return;
+                }
+                
                 if (value) {
                     currentFilters[field] = value;
                 } else {
@@ -921,20 +933,12 @@
             return select;
         }
 
-        // 更新筛选器选项（实现多级联动）
+        // 更新筛选器选项（实现多级联动）- 这是修复的核心部分
         function updateFilterOptions() {
             if (!currentProductType) return;
             
             const config = filterConfigs[currentProductType] || [];
             const data = productData[currentProductType] || [];
-            
-            // 根据所有当前筛选条件过滤数据
-            let filteredData = data;
-            
-            // 应用所有筛选条件
-            for (const [field, value] of Object.entries(currentFilters)) {
-                filteredData = filteredData.filter(item => item[field] === value);
-            }
             
             // 为每个筛选器更新选项
             config.forEach(filter => {
@@ -947,12 +951,25 @@
                 const field = filter.field;
                 const currentValue = select.value;
                 
-                // 获取该字段在过滤后数据中的可能值
-                const availableValues = [...new Set(filteredData.map(item => item[field]))].filter(v => v);
+                // 为每个字段单独计算可用选项
+                let fieldFilteredData = data;
+                
+                // 应用其他所有筛选条件（除了当前字段自己）
+                for (const [otherField, otherValue] of Object.entries(currentFilters)) {
+                    if (otherField !== field && otherValue) {
+                        fieldFilteredData = fieldFilteredData.filter(item => item[otherField] === otherValue);
+                    }
+                }
+                
+                // 获取该字段在当前过滤条件下的可能值
+                const availableValues = [...new Set(fieldFilteredData.map(item => item[field]))].filter(v => v);
                 availableValues.sort();
                 
-                // 保存当前选中的值（如果在新数据中还存在）
+                // 保存当前选中的值（如果它存在于可用选项中）
                 const shouldKeepCurrentValue = currentValue && availableValues.includes(currentValue);
+                
+                // 保存原始选中值
+                const originalSelectedIndex = select.selectedIndex;
                 
                 // 更新选项
                 select.innerHTML = '<option value="">请选择</option>';
@@ -969,10 +986,18 @@
                     select.appendChild(option);
                 });
                 
-                // 如果当前选中的值在过滤后不可用，清空它
+                // 如果当前选中的值在新数据中不可用，但用户没有主动清空它，我们添加一个禁用的选项
                 if (currentValue && !availableValues.includes(currentValue)) {
-                    delete currentFilters[field];
-                    select.value = "";
+                    // 添加一个禁用的选项显示当前不可用的值
+                    const disabledOption = document.createElement('option');
+                    disabledOption.value = currentValue;
+                    disabledOption.textContent = `${currentValue} (当前不可用)`;
+                    disabledOption.disabled = true;
+                    disabledOption.selected = true;
+                    select.appendChild(disabledOption);
+                    
+                    // 注意：我们不从currentFilters中删除这个字段
+                    // 这样用户可以重新选择其他可用值
                 }
             });
         }
@@ -1008,7 +1033,7 @@
             
             const data = productData[currentProductType] || [];
             
-            // 应用筛选
+            // 应用筛选，但跳过那些显示为"不可用"的选项
             let filteredData = data.filter(item => {
                 for (const [field, value] of Object.entries(currentFilters)) {
                     if (value && item[field] !== value) {
@@ -1149,7 +1174,7 @@
             // 2秒后恢复按钮状态
             setTimeout(() => {
                 button.innerHTML = originalHTML;
-                button.classList.remove('copiled');
+                button.classList.remove('copied');
             }, 2000);
             
             // 3秒后隐藏提示
