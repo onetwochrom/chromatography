@@ -93,13 +93,13 @@
             border-color: #2980b9;
         }
         
-        .fixed-phase-buttons {
+        .phase-type-buttons {
             margin-bottom: 30px;
             text-align: center;
             display: none;
         }
         
-        .fixed-phase-buttons label {
+        .phase-type-buttons label {
             font-size: 16px;
             font-weight: bold;
             margin-right: 10px;
@@ -213,10 +213,39 @@
             background: white;
             cursor: pointer;
             transition: border-color 0.3s;
+            position: relative;
         }
         
         .filter-select:hover {
             border-color: #3498db;
+        }
+        
+        /* 默认值样式 */
+        .filter-select.default-value {
+            border-color: #95a5a6;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .filter-select.default-value option:not(:first-child) {
+            color: #2c3e50;
+        }
+        
+        .filter-select.default-value option:first-child {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .default-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #95a5a6;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: normal;
         }
         
         .results-section {
@@ -472,6 +501,13 @@
                 right: 10px;
                 transform: none;
             }
+            
+            .default-badge {
+                top: -6px;
+                right: -6px;
+                font-size: 9px;
+                padding: 1px 4px;
+            }
         }
     </style>
 </head>
@@ -512,9 +548,9 @@
                 </div>
             </div>
             
-            <!-- 固定相类型按钮 -->
-            <div class="fixed-phase-buttons" id="fixedPhaseButtons">
-                <label><i class="fas fa-layer-group"></i> 选择固定相类型：</label>
+            <!-- 固定相类型/色谱柱类型按钮 -->
+            <div class="phase-type-buttons" id="phaseTypeButtons">
+                <label id="phaseTypeLabel"><i class="fas fa-layer-group"></i> 选择固定相类型：</label>
                 <div class="phase-button-group" id="phaseButtonGroup">
                     <!-- 按钮将由JavaScript动态生成 -->
                 </div>
@@ -578,7 +614,7 @@
                 { id: "length", label: "长度(mm)", field: "长度mm" }
             ],
             "气相毛细柱": [
-                { id: "application", label: "应用场景", field: "应用场景" },
+                { id: "columnType", label: "色谱柱类型", field: "色谱柱类型" },
                 { id: "model", label: "型号", field: "型号" },
                 { id: "length", label: "长度(m)", field: "长度m" },
                 { id: "innerDiameter", label: "内径(mm)", field: "内径mm" },
@@ -621,16 +657,17 @@
                 "内径mm": "4.6",
                 "长度mm": "250"
             },
-            "UHPLC柱": {
-                "粒径μm": "1.7",
-                "内径mm": "2.1",
-                "长度mm": "100"
-            },
-            "液相制备柱": {
-                "粒径μm": "10",
-                "内径mm": "20",
-                "长度mm": "250"
+            "气相毛细柱": {
+                "长度m": "30",
+                "内径mm": "0.25",
+                "膜厚μm": "0.25"
             }
+        };
+
+        // 需要显示为按钮的字段类型（固定相类型/色谱柱类型）
+        const phaseTypeFields = {
+            "固定相类型": "固定相类型",
+            "色谱柱类型": "色谱柱类型"
         };
 
         // DOM元素
@@ -638,7 +675,8 @@
         const errorMessage = document.getElementById('errorMessage');
         const productTypeButtons = document.getElementById('productTypeButtons');
         const typeButtonGroup = document.getElementById('typeButtonGroup');
-        const fixedPhaseButtons = document.getElementById('fixedPhaseButtons');
+        const phaseTypeButtons = document.getElementById('phaseTypeButtons');
+        const phaseTypeLabel = document.getElementById('phaseTypeLabel');
         const phaseButtonGroup = document.getElementById('phaseButtonGroup');
         const filterSection = document.getElementById('filterSection');
         const filterGrid = document.getElementById('filterGrid');
@@ -654,7 +692,8 @@
         // 当前选择的参数
         let currentFilters = {};
         let currentProductType = '';
-        let availableFixedPhases = [];
+        let currentPhaseTypeField = ''; // 当前产品类型的相位类型字段名
+        let availablePhaseTypes = []; // 相位类型选项
 
         // 页面加载时自动加载数据
         document.addEventListener('DOMContentLoaded', function() {
@@ -776,17 +815,30 @@
             filterSection.style.display = 'block';
             resultsSection.style.display = 'block';
             
-            // 检查该产品类型是否有固定相类型字段
+            // 检查该产品类型的相位类型字段
             const config = filterConfigs[productType] || [];
-            const hasFixedPhase = config.some(filter => filter.field === "固定相类型");
+            currentPhaseTypeField = '';
             
-            if (hasFixedPhase) {
-                fixedPhaseButtons.style.display = 'block';
-                // 获取该产品类型的固定相类型
-                getFixedPhases(productType);
+            // 查找是否有需要显示为按钮的字段
+            for (const [fieldName, displayName] of Object.entries(phaseTypeFields)) {
+                const hasField = config.some(filter => filter.field === fieldName);
+                if (hasField) {
+                    currentPhaseTypeField = fieldName;
+                    break;
+                }
+            }
+            
+            if (currentPhaseTypeField) {
+                phaseTypeButtons.style.display = 'block';
+                // 更新标签文本
+                const displayName = phaseTypeFields[currentPhaseTypeField];
+                phaseTypeLabel.innerHTML = `<i class="fas fa-layer-group"></i> 选择${displayName}：`;
+                
+                // 获取该产品类型的相位类型
+                getPhaseTypes(productType, currentPhaseTypeField);
             } else {
-                fixedPhaseButtons.style.display = 'none';
-                availableFixedPhases = [];
+                phaseTypeButtons.style.display = 'none';
+                availablePhaseTypes = [];
             }
             
             // 创建筛选器
@@ -799,45 +851,56 @@
             updateResults();
         }
 
-        // 获取固定相类型
-        function getFixedPhases(productType) {
+        // 获取相位类型（固定相类型或色谱柱类型）
+        function getPhaseTypes(productType, fieldName) {
             const data = productData[productType] || [];
-            availableFixedPhases = [...new Set(data.map(item => item["固定相类型"]))].filter(v => v);
-            availableFixedPhases.sort();
+            availablePhaseTypes = [...new Set(data.map(item => item[fieldName]))].filter(v => v);
+            availablePhaseTypes.sort();
             
-            // 创建固定相类型按钮
-            createFixedPhaseButtons();
+            // 创建相位类型按钮
+            createPhaseTypeButtons();
         }
 
-        // 创建固定相类型按钮
-        function createFixedPhaseButtons() {
+        // 创建相位类型按钮
+        function createPhaseTypeButtons() {
             phaseButtonGroup.innerHTML = '';
             
-            if (availableFixedPhases.length === 0) {
-                phaseButtonGroup.innerHTML = '<p>该产品类型暂无固定相类型数据</p>';
+            if (availablePhaseTypes.length === 0) {
+                phaseButtonGroup.innerHTML = '<p>该产品类型暂无相关数据</p>';
                 return;
             }
             
-            // 为每个固定相类型创建按钮
-            availableFixedPhases.forEach(phase => {
+            // 为每个相位类型创建按钮
+            availablePhaseTypes.forEach(phase => {
                 const button = document.createElement('button');
                 button.className = 'phase-btn';
                 button.textContent = phase;
                 button.dataset.phase = phase;
                 
                 button.addEventListener('click', function() {
-                    // 移除其他按钮的active类
-                    document.querySelectorAll('.phase-btn').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
+                    // 获取当前选中的相位类型
+                    const currentPhase = currentFilters[currentPhaseTypeField];
                     
-                    // 添加当前按钮的active类
-                    this.classList.add('active');
+                    // 如果是当前已选中的相位类型，则取消选择
+                    if (currentPhase === phase) {
+                        // 移除当前按钮的active类
+                        this.classList.remove('active');
+                        // 清除筛选
+                        delete currentFilters[currentPhaseTypeField];
+                    } else {
+                        // 移除其他按钮的active类
+                        document.querySelectorAll('.phase-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        
+                        // 添加当前按钮的active类
+                        this.classList.add('active');
+                        
+                        // 设置相位类型筛选
+                        currentFilters[currentPhaseTypeField] = phase;
+                    }
                     
-                    // 设置固定相类型筛选
-                    currentFilters["固定相类型"] = phase;
-                    
-                    // 更新筛选器选项（根据固定相类型限制）
+                    // 更新筛选器选项（根据相位类型限制）
                     updateFilterOptions();
                     
                     // 更新结果
@@ -854,15 +917,8 @@
             const config = filterConfigs[productType] || [];
             
             config.forEach(filter => {
-                // 跳过固定相类型，因为我们已经用按钮处理了（如果有的话）
-                if (filter.field === "固定相类型") {
-                    // 对于气相毛细柱，应用场景不是固定相类型，需要特殊处理
-                    if (filter.id === "application") {
-                        // 对于应用场景，我们创建普通的下拉框
-                        createFilterSelect(filter);
-                    }
-                    return;
-                }
+                // 跳过相位类型字段，因为我们已经用按钮处理了
+                if (filter.field === currentPhaseTypeField) return;
                 
                 createFilterSelect(filter);
             });
@@ -876,6 +932,9 @@
             const label = document.createElement('label');
             label.textContent = filter.label;
             label.htmlFor = filter.id;
+            
+            const selectContainer = document.createElement('div');
+            selectContainer.style.position = 'relative';
             
             const select = document.createElement('select');
             select.id = filter.id;
@@ -901,20 +960,30 @@
                 
                 if (value) {
                     currentFilters[field] = value;
+                    // 移除默认值样式
+                    this.classList.remove('default-value');
                 } else {
                     delete currentFilters[field];
+                    // 检查是否为默认值字段
+                    const defaults = defaultFilters[currentProductType] || {};
+                    if (defaults[field]) {
+                        this.classList.add('default-value');
+                    }
                 }
                 
-                // 更新筛选器选项（根据固定相类型限制）
+                // 更新筛选器选项
                 updateFilterOptions();
                 
                 // 更新结果
                 updateResults();
             });
             
+            selectContainer.appendChild(select);
             filterGroup.appendChild(label);
-            filterGroup.appendChild(select);
+            filterGroup.appendChild(selectContainer);
             filterGrid.appendChild(filterGroup);
+            
+            return select;
         }
 
         // 应用默认筛选值
@@ -926,6 +995,8 @@
                 if (select && select.querySelector(`option[value="${value}"]`)) {
                     select.value = value;
                     currentFilters[field] = value;
+                    // 添加默认值样式
+                    select.classList.add('default-value');
                 }
             }
         }
@@ -940,16 +1011,16 @@
             // 根据当前选择的筛选条件过滤数据
             let filteredData = data;
             
-            // 如果有固定相类型筛选，先根据固定相类型过滤
-            if (currentFilters["固定相类型"]) {
+            // 如果有相位类型筛选，先根据相位类型过滤
+            if (currentPhaseTypeField && currentFilters[currentPhaseTypeField]) {
                 filteredData = filteredData.filter(item => 
-                    item["固定相类型"] === currentFilters["固定相类型"]
+                    item[currentPhaseTypeField] === currentFilters[currentPhaseTypeField]
                 );
             }
             
-            // 再根据其他筛选条件进一步过滤
+            // 再根据其他筛选条件进一步过滤（除了当前正在更新的字段）
             for (const [field, value] of Object.entries(currentFilters)) {
-                if (field !== "固定相类型") {
+                if (field !== currentPhaseTypeField) {
                     filteredData = filteredData.filter(item => 
                         item[field] === value
                     );
@@ -957,8 +1028,8 @@
             }
             
             config.forEach(filter => {
-                // 跳过固定相类型（我们已经用按钮处理了）
-                if (filter.field === "固定相类型" && filter.id !== "application") return;
+                // 跳过相位类型字段（我们已经用按钮处理了）
+                if (filter.field === currentPhaseTypeField) return;
                 
                 const select = document.getElementById(filter.id);
                 if (!select) return;
@@ -989,6 +1060,14 @@
                 if (currentValue && !availableValues.includes(currentValue)) {
                     delete currentFilters[field];
                     select.value = "";
+                    
+                    // 检查是否为默认值字段
+                    const defaults = defaultFilters[currentProductType] || {};
+                    if (defaults[field]) {
+                        select.classList.add('default-value');
+                        select.value = defaults[field];
+                        currentFilters[field] = defaults[field];
+                    }
                 }
             });
         }
@@ -1000,7 +1079,7 @@
             // 清空当前筛选条件
             currentFilters = {};
             
-            // 重置所有按钮
+            // 重置所有相位类型按钮
             document.querySelectorAll('.phase-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -1008,11 +1087,12 @@
             // 重置所有下拉框为"请选择"
             const config = filterConfigs[currentProductType] || [];
             config.forEach(filter => {
-                if (filter.field === "固定相类型" && filter.id !== "application") return;
+                if (filter.field === currentPhaseTypeField) return;
                 
                 const select = document.getElementById(filter.id);
                 if (select) {
                     select.value = "";
+                    select.classList.remove('default-value');
                 }
             });
             
